@@ -8,6 +8,10 @@ import numpy as np
 import cv2
 import os
 from curve_proc import curve_adjust
+# from contrast import preprocess
+
+GAUSSIAN_SMOOTH_FILTER_SIZE = (3, 3)
+BINARY_THRESH = 160
 
 
 # image enhance, add brightness, curve adjust
@@ -18,22 +22,41 @@ def enhance_image(im_file, image):
 
     image = Image.fromarray(image)
     # enhance brightness
-    res = ImageEnhance.Brightness(image).enhance(brightness)
+    im = ImageEnhance.Brightness(image).enhance(brightness)
 
     # save image
     # res_save = np.array(res)
     # cv2.imwrite("temp/"+im_file.split("/")[-1], res_save)
 
     # curve adjust
-    res = np.array(res)
-    res = curve_adjust('curve.acv', res)
+    im = np.array(im)
+    im = curve_adjust('curve.acv', im)
 
     # enhance contrast
     # enh_con = ImageEnhance.Contrast(res)
     # contrast = 5
     # res = enh_con.enhance(contrast)
 
-    return np.array(res)
+    # to gray
+    hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+    hue, saturation, value = cv2.split(hsv)
+
+    # B, G, R = cv2.split(image)
+    # gray = 0.55*G  + 0.45*R
+    # gray = gray.astype(int)
+
+    return np.array(value)
+
+
+# big block eleminate
+def big_block_eliminate(binary):
+    # big erosion
+    erosion = cv2.erode(binary, np.ones((19, 19), np.uint8), iterations=1)
+
+    # minus
+    erosion = binary - erosion
+
+    return erosion
 
 
 # pre process
@@ -43,16 +66,18 @@ def pre_proc(im_file, image):
     cv2.waitKey(0)
 
     # enhancce image
-    image = enhance_image(im_file, image)
-    cv2.imshow("enhance", image)
+    gray = enhance_image(im_file, image)
+    cv2.imshow("gray", gray)
     cv2.waitKey(0)
 
     # to gray and reverse
-    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     gray = cv2.bitwise_not(gray)
 
+    # blur
+    blur = cv2.GaussianBlur(gray, GAUSSIAN_SMOOTH_FILTER_SIZE, 0)
+
     # to binary image
-    binary = cv2.threshold(gray, 200, 255, 0)[1]
+    binary = cv2.threshold(blur, BINARY_THRESH, 255, 0)[1]
     cv2.imshow("thresh", binary)
     cv2.waitKey(0)
 
@@ -66,7 +91,7 @@ def pre_proc(im_file, image):
     cv2.imshow("erosion", erosion)
     cv2.waitKey(0)
 
-    cv2.imwrite('temp/'+im_file.split('/')[-1], erosion)
+    return erosion
 
 
 # use sobel to find the contour
@@ -126,7 +151,8 @@ def adjust_skew(image):
 # process
 def proc(im_file):
     image = cv2.imread(im_file)
-    binary = pre_proc_sobel(im_file, image)
+    binary = pre_proc(im_file, image)
+    cv2.imwrite('temp/'+im_file.split('/')[-1], binary)
     return binary
     # region = adjust_skew(binary_im)
     # for box in region:
