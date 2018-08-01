@@ -9,13 +9,14 @@ import cv2
 import os
 from curve_proc import curve_adjust
 # from contrast import preprocess
+from projective_transform import affine_transform
 
 GAUSSIAN_SMOOTH_FILTER_SIZE = (3, 3)
 BINARY_THRESH = 160
 
 
 # image enhance, add brightness, curve adjust
-def enhance_image(im_file, image):
+def enhance_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mean = np.mean(gray)
     brightness = (1-mean/255) * 3
@@ -28,14 +29,15 @@ def enhance_image(im_file, image):
     # res_save = np.array(res)
     # cv2.imwrite("temp/"+im_file.split("/")[-1], res_save)
 
+
+    # enhance contrast
+    enh_con = ImageEnhance.Contrast(im)
+    contrast = 5
+    im = enh_con.enhance(contrast)
+
     # curve adjust
     im = np.array(im)
     im = curve_adjust('curve.acv', im)
-
-    # enhance contrast
-    # enh_con = ImageEnhance.Contrast(res)
-    # contrast = 5
-    # res = enh_con.enhance(contrast)
 
     # to gray
     hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
@@ -60,15 +62,13 @@ def big_block_eliminate(binary):
 
 
 # pre process
-def pre_proc(im_file, image):
+def pre_proc(image, debug=False):
     # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    cv2.imshow("raw", image)
-    cv2.waitKey(0)
-
     # enhancce image
-    gray = enhance_image(im_file, image)
-    cv2.imshow("gray", gray)
-    cv2.waitKey(0)
+    gray = enhance_image(image)
+    if debug:
+        cv2.imshow("gray", gray)
+        cv2.waitKey(0)
 
     # to gray and reverse
     gray = cv2.bitwise_not(gray)
@@ -77,19 +77,23 @@ def pre_proc(im_file, image):
     blur = cv2.GaussianBlur(gray, GAUSSIAN_SMOOTH_FILTER_SIZE, 0)
 
     # to binary image
-    binary = cv2.threshold(blur, BINARY_THRESH, 255, 0)[1]
-    cv2.imshow("thresh", binary)
-    cv2.waitKey(0)
+    # binary = cv2.threshold(blur, BINARY_THRESH, 255, 0)[1]
+    ret, binary = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+    if debug:
+        cv2.imshow("thresh", binary)
+        cv2.waitKey(0)
 
     # dilation
     dilation = cv2.dilate(binary, np.ones((3, 3), np.uint8), iterations=1)
-    cv2.imshow("dilation", dilation)
-    cv2.waitKey(0)
+    if debug:
+        cv2.imshow("dilation", dilation)
+        cv2.waitKey(0)
 
     # erosion
     erosion = cv2.erode(dilation, np.ones((3, 3), np.uint8), iterations=1)
-    cv2.imshow("erosion", erosion)
-    cv2.waitKey(0)
+    if debug:
+        cv2.imshow("erosion", erosion)
+        cv2.waitKey(0)
 
     return erosion
 
@@ -148,10 +152,20 @@ def adjust_skew(image):
     return region
 
 
+def proc(image, mask, debug=False):
+    affined_img = affine_transform(image, mask)
+    if debug:
+        cv2.imshow("affined", affined_img)
+        cv2.waitKey(0)
+    binary = pre_proc(affined_img, debug=True)
+    return binary
+
+
 # process
-def proc(im_file):
-    image = cv2.imread(im_file)
-    binary = pre_proc(im_file, image)
+def test_proc(im_file, image, mask):
+    cv2.imshow("raw", image)
+    cv2.waitKey(0)
+    binary = proc(image, mask, debug=True)
     cv2.imwrite('temp/'+im_file.split('/')[-1], binary)
     return binary
     # region = adjust_skew(binary_im)
@@ -162,14 +176,19 @@ def proc(im_file):
 
 
 if __name__ == "__main__":
-    im_folder = sys.argv[1]
-    if os.path.isdir(im_folder):
-        im_file_list = os.listdir(im_folder)
-        for im_file in im_file_list:
-            proc(os.path.join(im_folder, im_file))
-    else:
-        proc(im_folder)
+    tags_folder = "./img/tags/1/tag"
+    mask_folder = "./img/tags/1/mask"
 
+    if len(sys.argv) > 1:
+        image = cv2.imread(sys.argv[1])
+        mask = cv2.imread(sys.argv[2], cv2.CV_LOAD_IMAGE_GRAYSCALE)
+        test_proc(sys.argv[1].split('/')[-1], image, mask)
+    else:
+        tag_files = os.listdir(tags_folder)
+        for tag_file in tag_files:
+            image = cv2.imread(os.path.join(tags_folder, tag_file))
+            mask = cv2.imread(os.path.join(mask_folder, tag_file.split('.')[0]+"_mask.jpg"), cv2.CV_LOAD_IMAGE_GRAYSCALE)
+            test_proc(tag_file, image, mask)
 
 #
 # (h, w) = image.shape[:2]
