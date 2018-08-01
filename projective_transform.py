@@ -48,7 +48,10 @@ def affine_transform(im, mask, debug=False):
     roi_width, roi_height = rect[1]
     angle = rect[2]
 
-    box = cv2.cv.BoxPoints(rect)
+    if cv2.__version__.split('.')[0] == "2":
+        box = cv2.cv.BoxPoints(rect)
+    else:
+        box = cv2.boxPoints(rect)
     box = np.int0(box)
     if debug:
         cv2.line(im, tuple(box[0]), tuple(box[1]), [0,0,255], 2)
@@ -72,7 +75,7 @@ def affine_transform(im, mask, debug=False):
     M = cv2.getRotationMatrix2D(center, angle, 1)
     img = cv2.warpAffine(im, M, (width, height))
 
-    roi = img[center[1]-roi_height/2: center[1]+roi_height/2, center[0]-roi_width/2:center[0]+roi_width/2]
+    roi = img[int(center[1]-roi_height/2): int(center[1]+roi_height/2), int(center[0]-roi_width/2):int(center[0]+roi_width/2)]
     if debug:
         cv2.imshow("roi", roi)
         cv2.waitKey(0)

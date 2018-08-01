@@ -37,7 +37,7 @@ def enhance_image(image):
 
     # curve adjust
     im = np.array(im)
-    im = curve_adjust('curve.acv', im)
+    im = curve_adjust(os.path.join(os.path.dirname("__file__"), 'curve.acv'), im)
 
     # to gray
     hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
@@ -157,7 +157,7 @@ def proc(image, mask, debug=False):
     if debug:
         cv2.imshow("affined", affined_img)
         cv2.waitKey(0)
-    binary = pre_proc(affined_img, debug=True)
+    binary = pre_proc(affined_img, debug)
     return binary
 
 
