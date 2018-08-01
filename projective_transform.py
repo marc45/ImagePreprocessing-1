@@ -4,6 +4,7 @@ import os
 import cv2
 import numpy as np
 
+OPENCV3 = True if cv2.__version__.split('.')[0] == "3" else False
 
 def find_contour(img, mask):
     mask_copy = mask.copy()
@@ -40,7 +41,11 @@ def affine_transform(im, mask, debug=False):
     mask = cv2.erode(mask, np.ones((5, 5), np.uint8), iterations=1)
     mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
 
-    contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if OPENCV3:
+        _, contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    else:
+        contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
     rect = cv2.minAreaRect(contours[0])
 
     # remember always width > height
@@ -48,10 +53,10 @@ def affine_transform(im, mask, debug=False):
     roi_width, roi_height = rect[1]
     angle = rect[2]
 
-    if cv2.__version__.split('.')[0] == "2":
-        box = cv2.cv.BoxPoints(rect)
-    else:
+    if OPENCV3:
         box = cv2.boxPoints(rect)
+    else:
+        box = cv2.cv.BoxPoints(rect)
     box = np.int0(box)
     if debug:
         cv2.line(im, tuple(box[0]), tuple(box[1]), [0,0,255], 2)
