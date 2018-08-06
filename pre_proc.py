@@ -84,7 +84,7 @@ def pre_proc(image, debug=False):
         cv2.waitKey(0)
 
     # dilation
-    dilation = cv2.dilate(binary, np.ones((3, 3), np.uint8), iterations=1)
+    dilation = cv2.dilate(binary, np.ones((5, 2), np.uint8), iterations=1)
     if debug:
         cv2.imshow("dilation", dilation)
         cv2.waitKey(0)
@@ -153,17 +153,32 @@ def adjust_skew(image):
 
 
 def proc(image, mask, debug=False):
-    affined_img = affine_transform(image, mask)
+    affined_img = affine_transform(image, mask, debug)
     if debug:
         cv2.imshow("affined", affined_img)
         cv2.waitKey(0)
     binary = pre_proc(affined_img, debug)
+    height, width = binary.shape
+    binary = cv2.resize(binary, (100*width/height, 100), interpolation=cv2.INTER_CUBIC)
+    if debug:
+        cv2.imshow("result", binary)
+        cv2.waitKey(0)
+
+
     return binary
 
 
 # process
 def test_proc(im_file, image, mask):
+    # resize
+    height, width, _ = image.shape
+    image = cv2.resize(image, (100*width/height, 100), interpolation=cv2.INTER_CUBIC)
+    mask = cv2.resize(mask, (100*width/height, 100), interpolation=cv2.INTER_CUBIC)
+
     cv2.imshow("raw", image)
+    cv2.waitKey(0)
+
+    cv2.imshow("mask", mask)
     cv2.waitKey(0)
     binary = proc(image, mask, debug=True)
     cv2.imwrite('temp/'+im_file.split('/')[-1], binary)

@@ -46,7 +46,18 @@ def affine_transform(im, mask, debug=False):
     else:
         contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    rect = cv2.minAreaRect(contours[0])
+    if len(contours) < 1:
+        return False
+    elif len(contours) == 1:
+        rect = cv2.minAreaRect(contours[0])
+    else:
+        max_area = 0
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area > max_area:
+                max_area = area
+                final_contour = c
+        rect = cv2.minAreaRect(final_contour)
 
     # remember always width > height
     center = rect[0]
