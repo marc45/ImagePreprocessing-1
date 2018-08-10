@@ -16,13 +16,13 @@ BINARY_THRESH = 160
 
 
 # image enhance, add brightness, curve adjust
-def enhance_image(image):
+def enhance_image(image, debug=False):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mean = np.mean(gray)
     # brightness = 1.3 (1-mean/255) * 3
     brightness = 158 / mean - 0.1286
     brightness = 2 if brightness > 2 else brightness
-    print(brightness)
+    print("brightness: {}".format(brightness))
 
     im = Image.fromarray(image)
 
@@ -46,8 +46,9 @@ def enhance_image(image):
     # curve adjust
     im = np.array(im)
     im = curve_adjust(os.path.join(os.path.dirname(__file__), 'curve.acv'), im)
-    cv2.imshow("enhance", im)
-    cv2.waitKey(0)
+    if debug:
+        cv2.imshow("enhance", im)
+        cv2.waitKey(0)
 
     # to gray
     gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
@@ -76,7 +77,7 @@ def big_block_eliminate(binary):
 def pre_proc(image, debug=False):
     # gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # enhancce image
-    gray = enhance_image(image)
+    gray = enhance_image(image, debug)
     if debug:
         cv2.imshow("gray", gray)
         cv2.waitKey(0)
