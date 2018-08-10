@@ -19,35 +19,46 @@ BINARY_THRESH = 160
 def enhance_image(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     mean = np.mean(gray)
-    brightness = (1-mean/255) * 3
+    # brightness = 1.3 (1-mean/255) * 3
+    brightness = 158 / mean - 0.1286
+    brightness = 2 if brightness > 2 else brightness
+    print(brightness)
 
-    image = Image.fromarray(image)
+    im = Image.fromarray(image)
+
     # enhance brightness
-    im = ImageEnhance.Brightness(image).enhance(brightness)
+    im = ImageEnhance.Brightness(im).enhance(brightness)
+
+    # enhance sharpness
+    enh_sha = ImageEnhance.Sharpness(im)
+    sharpness = 3.0
+    im = enh_sha.enhance(sharpness)
+
+    # enhance contrast
+    enh_con = ImageEnhance.Contrast(im)
+    contrast = 2
+    im = enh_con.enhance(contrast)
 
     # save image
     # res_save = np.array(res)
     # cv2.imwrite("temp/"+im_file.split("/")[-1], res_save)
 
-
-    # enhance contrast
-    enh_con = ImageEnhance.Contrast(im)
-    contrast = 5
-    im = enh_con.enhance(contrast)
-
     # curve adjust
     im = np.array(im)
     im = curve_adjust(os.path.join(os.path.dirname(__file__), 'curve.acv'), im)
+    cv2.imshow("enhance", im)
+    cv2.waitKey(0)
 
     # to gray
-    hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
-    hue, saturation, value = cv2.split(hsv)
+    gray = cv2.cvtColor(im, cv2.COLOR_BGR2GRAY)
+    # hsv = cv2.cvtColor(im, cv2.COLOR_BGR2HSV)
+    # hue, saturation, value = cv2.split(hsv)
 
     # B, G, R = cv2.split(image)
     # gray = 0.55*G  + 0.45*R
     # gray = gray.astype(int)
 
-    return np.array(value)
+    return np.array(gray)
 
 
 # big block eleminate
@@ -84,7 +95,7 @@ def pre_proc(image, debug=False):
         cv2.waitKey(0)
 
     # dilation
-    dilation = cv2.dilate(binary, np.ones((5, 2), np.uint8), iterations=1)
+    dilation = cv2.dilate(binary, np.ones((4, 2), np.uint8), iterations=1)
     if debug:
         cv2.imshow("dilation", dilation)
         cv2.waitKey(0)
@@ -191,8 +202,8 @@ def test_proc(im_file, image, mask):
 
 
 if __name__ == "__main__":
-    tags_folder = "./img/tags/1/tag"
-    mask_folder = "./img/tags/1/mask"
+    tags_folder = "./img/tags/3/tag"
+    mask_folder = "./img/tags/3/mask"
 
     if len(sys.argv) > 1:
         image = cv2.imread(sys.argv[1])
