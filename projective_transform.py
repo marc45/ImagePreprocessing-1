@@ -3,8 +3,11 @@
 import os
 import cv2
 import numpy as np
+from extractInnerMaxRect import findRotMaxRect
+import math
 
 OPENCV3 = True if cv2.__version__.split('.')[0] == "3" else False
+
 
 def find_contour(img, mask):
     mask_copy = mask.copy()
@@ -36,11 +39,36 @@ def find_contour(img, mask):
     return tag_boxes
 
 
-def affine_transform(im, mask, debug=False):
-    ret, mask = cv2.threshold(mask, 100, 255, cv2.THRESH_BINARY)
-    mask = cv2.erode(mask, np.ones((5, 5), np.uint8), iterations=1)
-    mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
+def find_max_inner_rect(mask):
+    idx_in  = np.where(mask>200)
+    idx_out = np.where(mask<50)
+    mask = np.ones_like(mask)
+    mask[idx_in]  = 0
+    rect_coord_ori, angle, coord_out_rot = findRotMaxRect(mask, flag_opt=True, nbre_angle=4,
+                                                          flag_parallel=False,
+                                                          flag_out='rotation',
+                                                          flag_enlarge_img=False,
+                                                          limit_image_size=100)
 
+    center_x = 0
+    center_y = 0
+    for coord in rect_coord_ori:
+        center_x += coord[1]
+        center_y += coord[0]
+
+    width = int(math.sqrt((rect_coord_ori[0][0] - rect_coord_ori[1][0])**2 +
+                      (rect_coord_ori[0][1] - rect_coord_ori[1][1])**2) + 0.5)
+    height = int(math.sqrt((rect_coord_ori[1][0] - rect_coord_ori[2][0])**2 +
+                       (rect_coord_ori[1][1] - rect_coord_ori[2][1])**2) + 0.5)
+    center_x = center_x / 4.0
+    center_y = center_y / 4.0
+
+    print(rect_coord_ori)
+    print(center_x, center_y, width, height, angle)
+    return ((center_x, center_y), (width, height), angle)
+
+
+def find_min_enclosing_rect(mask):
     if OPENCV3:
         _, contours, hierarchy = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     else:
@@ -59,23 +87,10 @@ def affine_transform(im, mask, debug=False):
                 final_contour = c
         rect = cv2.minAreaRect(final_contour)
 
-    # remember always width > height
+    # remember in rect always width > height
     center = rect[0]
     roi_width, roi_height = rect[1]
     angle = rect[2]
-
-    if OPENCV3:
-        box = cv2.boxPoints(rect)
-    else:
-        box = cv2.cv.BoxPoints(rect)
-    box = np.int0(box)
-    if debug:
-        cv2.line(im, tuple(box[0]), tuple(box[1]), [0,0,255], 2)
-        cv2.line(im, tuple(box[1]), tuple(box[2]), [0,0,255], 2)
-        cv2.line(im, tuple(box[2]), tuple(box[3]), [0,0,255], 2)
-        cv2.line(im, tuple(box[3]), tuple(box[0]), [0,0,255], 2)
-        cv2.imshow("im", im)
-        cv2.waitKey(0)
 
     if angle > 45:
         angle = angle - 90
@@ -87,14 +102,48 @@ def affine_transform(im, mask, debug=False):
         roi_width = rect[1][1]
         roi_height = rect[1][0]
 
+    print(center, roi_width, roi_height, angle)
+    return (center, (roi_width, roi_height), angle)
+
+
+def affine_transform(im, mask, debug=False):
     height, width = mask.shape
+    im = cv2.resize(im, (40*width/height, 40), interpolation=cv2.INTER_CUBIC)
+    mask = cv2.resize(mask, (40*width/height, 40), interpolation=cv2.INTER_CUBIC)
+
+    ret, mask = cv2.threshold(mask, 100, 255, cv2.THRESH_BINARY)
+    # mask = cv2.erode(mask, np.ones((5, 5), np.uint8), iterations=1)
+    # mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
+
+    # find minimum enclosing rectangle
+    # rect = find_min_enclosing_rect(mask)
+    # find max inner rectangle
+    rect = find_max_inner_rect(mask)
+
+    if rect == False:
+        return False
+
+    if debug:
+        im_copy = im.copy()
+        if OPENCV3:
+            box = cv2.boxPoints(rect)
+        else:
+            box = cv2.cv.BoxPoints(rect)
+        box = np.int0(box)
+        cv2.line(im_copy, tuple(box[0]), tuple(box[1]), [0, 0, 255], 1)
+        cv2.line(im_copy, tuple(box[1]), tuple(box[2]), [0, 0, 255], 1)
+        cv2.line(im_copy, tuple(box[2]), tuple(box[3]), [0, 0, 255], 1)
+        cv2.line(im_copy, tuple(box[3]), tuple(box[0]), [0, 0, 255], 1)
+        cv2.imshow("roi", im_copy)
+        cv2.waitKey(0)
+
+    center, (roi_width, roi_height), angle = rect
     M = cv2.getRotationMatrix2D(center, angle, 1)
     img = cv2.warpAffine(im, M, (width, height))
 
-    roi = img[int(center[1]-roi_height/2): int(center[1]+roi_height/2), int(center[0]-roi_width/2):int(center[0]+roi_width/2)]
-    if debug:
-        cv2.imshow("roi", roi)
-        cv2.waitKey(0)
+    roi = img[int(center[1]-roi_height/2): int(center[1]+roi_height/2),
+              int(center[0]-roi_width/2):int(center[0]+roi_width/2)]
+    roi = cv2.resize(roi, (100*roi_width/roi_height, 100), interpolation=cv2.INTER_CUBIC)
     return roi
 
 
@@ -112,7 +161,6 @@ if __name__ == "__main__":
     proc()
     # raw = cv2.imread("raw.jpg")
     # mask = cv2.imread("binary.jpg", cv2.CV_LOAD_IMAGE_GRAYSCALE)
-
 
     # tag_boxes = find_contour(raw, mask)
 

@@ -165,6 +165,7 @@ def adjust_skew(image):
 
 
 def proc(image, mask, debug=False):
+
     affined_img = affine_transform(image, mask, debug)
     if debug:
         cv2.imshow("affined", affined_img)
