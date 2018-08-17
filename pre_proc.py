@@ -204,8 +204,8 @@ def test_proc(im_file, image, mask):
 
 
 if __name__ == "__main__":
-    tags_folder = "./img/tags/3/tag"
-    mask_folder = "./img/tags/3/mask"
+    tags_folder = "./img/tags/4/tag"
+    mask_folder = "./img/tags/4/mask"
 
     if len(sys.argv) > 1:
         image = cv2.imread(sys.argv[1])

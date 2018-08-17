@@ -141,7 +141,7 @@ def findRotMaxRect(data_in,flag_opt=False,flag_parallel = False, nbre_angle=10,f
     #print (datetime.datetime.now()-time_s).total_seconds()
 
     if flag_opt:
-        myranges_brute = ([(-20.,20.),])
+        myranges_brute = ([(-10.,10.),])
         coeff0 = np.array([0.,])
         coeff1  = optimize.brute(residual, myranges_brute, args=(data,), Ns=nbre_angle, finish=None)
         popt = optimize.fmin(residual, coeff1, args=(data,), xtol=5, ftol=1.e-5, disp=False)

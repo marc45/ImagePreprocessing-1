@@ -4,6 +4,7 @@ import os
 import cv2
 import numpy as np
 from extractInnerMaxRect import findRotMaxRect
+from holeFill import hole_fill
 import math
 
 OPENCV3 = True if cv2.__version__.split('.')[0] == "3" else False
@@ -44,11 +45,11 @@ def find_max_inner_rect(mask):
     idx_out = np.where(mask<50)
     mask = np.ones_like(mask)
     mask[idx_in]  = 0
-    rect_coord_ori, angle, coord_out_rot = findRotMaxRect(mask, flag_opt=True, nbre_angle=4,
+    rect_coord_ori, angle, coord_out_rot = findRotMaxRect(mask, flag_opt=True, nbre_angle=5,
                                                           flag_parallel=False,
                                                           flag_out='rotation',
                                                           flag_enlarge_img=False,
-                                                          limit_image_size=100)
+                                                          limit_image_size=150)
 
     center_x = 0
     center_y = 0
@@ -63,8 +64,7 @@ def find_max_inner_rect(mask):
     center_x = center_x / 4.0
     center_y = center_y / 4.0
 
-    print(rect_coord_ori)
-    print(center_x, center_y, width, height, angle)
+    print angle
     return ((center_x, center_y), (width, height), angle)
 
 
@@ -102,7 +102,6 @@ def find_min_enclosing_rect(mask):
         roi_width = rect[1][1]
         roi_height = rect[1][0]
 
-    print(center, roi_width, roi_height, angle)
     return (center, (roi_width, roi_height), angle)
 
 
@@ -110,11 +109,19 @@ def affine_transform(im, mask, debug=False):
     height, width = mask.shape
     im = cv2.resize(im, (40*width/height, 40), interpolation=cv2.INTER_CUBIC)
     mask = cv2.resize(mask, (40*width/height, 40), interpolation=cv2.INTER_CUBIC)
+    height, width = mask.shape
 
     ret, mask = cv2.threshold(mask, 100, 255, cv2.THRESH_BINARY)
-    # mask = cv2.erode(mask, np.ones((5, 5), np.uint8), iterations=1)
-    # mask = cv2.dilate(mask, np.ones((5, 5), np.uint8), iterations=1)
+    # fille holes
+    mask = hole_fill(mask)
 
+    # dilate and erode
+    mask = cv2.dilate(mask, np.ones((10, 3), np.uint8), iterations=1)
+    mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=1)
+
+    if debug:
+        cv2.imshow("mask_affined", mask)
+        cv2.waitKey(0)
     # find minimum enclosing rectangle
     # rect = find_min_enclosing_rect(mask)
     # find max inner rectangle
@@ -138,11 +145,14 @@ def affine_transform(im, mask, debug=False):
         cv2.waitKey(0)
 
     center, (roi_width, roi_height), angle = rect
-    M = cv2.getRotationMatrix2D(center, angle, 1)
+    M = cv2.getRotationMatrix2D(center, angle/2.0, 1)
     img = cv2.warpAffine(im, M, (width, height))
 
+
+    # height_low = center[1] - roi_height/2 if center[1] - roi_height/2 > 0 else 1
+    # height_high = center[1] + roi_height/2 if center[1] + roi_height/2 < 0 else 1
     roi = img[int(center[1]-roi_height/2): int(center[1]+roi_height/2),
-              int(center[0]-roi_width/2):int(center[0]+roi_width/2)]
+              int(center[0]-roi_width/2): int(center[0]+roi_width/2)]
     roi = cv2.resize(roi, (100*roi_width/roi_height, 100), interpolation=cv2.INTER_CUBIC)
     return roi
 
