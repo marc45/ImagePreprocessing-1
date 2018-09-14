@@ -97,9 +97,9 @@ def pre_proc(image, debug=False):
 
     # dilation
     dilation = cv2.dilate(binary, np.ones((4, 2), np.uint8), iterations=1)
-    if debug:
-        cv2.imshow("dilation", dilation)
-        cv2.waitKey(0)
+    # if debug:
+    #     cv2.imshow("dilation", dilation)
+    #     cv2.waitKey(0)
 
     # erosion
     erosion = cv2.erode(dilation, np.ones((3, 3), np.uint8), iterations=1)
@@ -171,6 +171,8 @@ def proc(image, mask, debug=False):
         cv2.imshow("affined", affined_img)
         cv2.waitKey(0)
     binary = pre_proc(affined_img, debug)
+    # s = np.sum(binary, axis=1)
+    # print s
     height, width = binary.shape
     binary = cv2.resize(binary, (100*width/height, 100), interpolation=cv2.INTER_CUBIC)
     if debug:

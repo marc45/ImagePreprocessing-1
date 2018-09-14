@@ -41,10 +41,10 @@ def find_contour(img, mask):
 
 
 def find_max_inner_rect(mask):
-    idx_in  = np.where(mask>200)
-    idx_out = np.where(mask<50)
+    idx_in = np.where(mask > 200)
+    # idx_out = np.where(mask < 50)
     mask = np.ones_like(mask)
-    mask[idx_in]  = 0
+    mask[idx_in] = 0
     rect_coord_ori, angle, coord_out_rot = findRotMaxRect(mask, flag_opt=True, nbre_angle=5,
                                                           flag_parallel=False,
                                                           flag_out='rotation',
@@ -58,13 +58,13 @@ def find_max_inner_rect(mask):
         center_y += coord[0]
 
     width = int(math.sqrt((rect_coord_ori[0][0] - rect_coord_ori[1][0])**2 +
-                      (rect_coord_ori[0][1] - rect_coord_ori[1][1])**2) + 0.5)
+                          (rect_coord_ori[0][1] - rect_coord_ori[1][1])**2) + 0.5)
     height = int(math.sqrt((rect_coord_ori[1][0] - rect_coord_ori[2][0])**2 +
-                       (rect_coord_ori[1][1] - rect_coord_ori[2][1])**2) + 0.5)
+                           (rect_coord_ori[1][1] - rect_coord_ori[2][1])**2) + 0.5)
     center_x = center_x / 4.0
     center_y = center_y / 4.0
 
-    print angle
+    print(angle)
     return ((center_x, center_y), (width, height), angle)
 
 
@@ -102,7 +102,7 @@ def find_min_enclosing_rect(mask):
         roi_width = rect[1][1]
         roi_height = rect[1][0]
 
-    return (center, (roi_width, roi_height), angle)
+    return (center, (int(roi_width), int(roi_height)), angle)
 
 
 def affine_transform(im, mask, debug=False):
@@ -116,16 +116,16 @@ def affine_transform(im, mask, debug=False):
     mask = hole_fill(mask)
 
     # dilate and erode
-    mask = cv2.dilate(mask, np.ones((10, 3), np.uint8), iterations=1)
-    mask = cv2.erode(mask, np.ones((3, 3), np.uint8), iterations=1)
+    mask = cv2.erode(mask, np.ones((5, 7), np.uint8), iterations=1)
+    mask = cv2.dilate(mask, np.ones((3, 3), np.uint8), iterations=1)
 
     if debug:
         cv2.imshow("mask_affined", mask)
         cv2.waitKey(0)
     # find minimum enclosing rectangle
-    # rect = find_min_enclosing_rect(mask)
+    rect = find_min_enclosing_rect(mask)
     # find max inner rectangle
-    rect = find_max_inner_rect(mask)
+    # rect = find_max_inner_rect(mask)
 
     if rect == False:
         return False
@@ -147,7 +147,6 @@ def affine_transform(im, mask, debug=False):
     center, (roi_width, roi_height), angle = rect
     M = cv2.getRotationMatrix2D(center, angle/2.0, 1)
     img = cv2.warpAffine(im, M, (width, height))
-
 
     # height_low = center[1] - roi_height/2 if center[1] - roi_height/2 > 0 else 1
     # height_high = center[1] + roi_height/2 if center[1] + roi_height/2 < 0 else 1
