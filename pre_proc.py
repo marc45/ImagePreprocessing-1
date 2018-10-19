@@ -11,6 +11,8 @@ from curve_proc import curve_adjust
 # from contrast import preprocess
 from projective_transform import affine_transform
 
+OPENCV3 = True if cv2.__version__.split('.')[0] == "3" else False
+
 GAUSSIAN_SMOOTH_FILTER_SIZE = (3, 3)
 BINARY_THRESH = 160
 
@@ -164,6 +166,11 @@ def adjust_skew(image):
     return region
 
 
+def auto_resize(binary):
+    horizon_array = np.sum(binary, 1)
+    print horizon_array
+
+
 def proc(image, mask, debug=False):
 
     affined_img = affine_transform(image, mask, debug)
@@ -173,6 +180,7 @@ def proc(image, mask, debug=False):
     binary = pre_proc(affined_img, debug)
     # s = np.sum(binary, axis=1)
     # print s
+    # auto_resize(binary)
     height, width = binary.shape
     binary = cv2.resize(binary, (100*width/height, 100), interpolation=cv2.INTER_CUBIC)
     if debug:
@@ -217,7 +225,10 @@ if __name__ == "__main__":
         tag_files = os.listdir(tags_folder)
         for tag_file in tag_files:
             image = cv2.imread(os.path.join(tags_folder, tag_file))
-            mask = cv2.imread(os.path.join(mask_folder, tag_file.split('.')[0]+"_mask.jpg"), cv2.CV_LOAD_IMAGE_GRAYSCALE)
+            if OPENCV3:
+                mask = cv2.imread(os.path.join(mask_folder, tag_file.split('.')[0]+"_mask.jpg"), cv2.IMREAD_GRAYSCALE)
+            else:
+                mask = cv2.imread(os.path.join(mask_folder, tag_file.split('.')[0]+"_mask.jpg"), cv2.CV_LOAD_IMAGE_GRAYSCALE)
             test_proc(tag_file, image, mask)
 
 #

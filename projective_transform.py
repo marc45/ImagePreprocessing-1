@@ -150,8 +150,11 @@ def affine_transform(im, mask, debug=False):
 
     # height_low = center[1] - roi_height/2 if center[1] - roi_height/2 > 0 else 1
     # height_high = center[1] + roi_height/2 if center[1] + roi_height/2 < 0 else 1
-    roi = img[int(center[1]-roi_height/2): int(center[1]+roi_height/2),
-              int(center[0]-roi_width/2): int(center[0]+roi_width/2)]
+
+    # roi = img[int(center[1]-roi_height/2): int(center[1]+roi_height/2),
+    #           int(center[0]-roi_width/2): int(center[0]+roi_width/2)]
+    roi = img
+
     roi = cv2.resize(roi, (100*roi_width/roi_height, 100), interpolation=cv2.INTER_CUBIC)
     return roi
 
